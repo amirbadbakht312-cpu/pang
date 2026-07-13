@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>پنگوئن راه‌رو روی پس‌زمینه</title>
+  <title>پنگوئن کنار دریاچه</title>
   <style>
     * {
       margin: 0;
@@ -34,7 +34,7 @@
       z-index: 0;
     }
 
-    /* نوار رود عمودی با عرض یک‌دوم */
+    /* نوار دریاچه عمودی با عرض یک‌دوم */
     .vertical-bar {
       position: fixed;
       top: 0;
@@ -93,7 +93,7 @@
       100% { transform: translate(-50%, -50%) scale(1); opacity: 0.9; }
     }
 
-    /* لایه کلیک‌گیر برای تشخیص رود */
+    /* لایه کلیک‌گیر */
     #click-catcher {
       position: fixed;
       top: 0;
@@ -104,7 +104,7 @@
       background: transparent;
     }
 
-    /* متن راهنما (محو) */
+    /* راهنما */
     .hint {
       position: fixed;
       bottom: 20px;
@@ -125,9 +125,9 @@
   <!-- پس‌زمینه -->
   <div class="fullscreen-bg" role="img" aria-label="پس‌زمینه"></div>
 
-  <!-- رود عمودی -->
-  <div class="vertical-bar" id="river">
-    <img src="assets/image/roood_1.jpeg" alt="رود">
+  <!-- دریاچه عمودی -->
+  <div class="vertical-bar" id="lake">
+    <img src="assets/image/daryache.jpeg" alt="دریاچه">
   </div>
 
   <!-- پنگوئن -->
@@ -137,33 +137,82 @@
   <div id="click-catcher"></div>
 
   <!-- راهنما -->
-  <div class="hint">برای حرکت پنگوئن، روی پس‌زمینه (غیر از رود) کلیک کن</div>
+  <div class="hint">پنگوئن وارد دریاچه نمیشه! نزدیکش کلیک کن</div>
 
   <script>
     (function() {
       'use strict';
 
       const penguin = document.getElementById('penguin');
-      const river = document.getElementById('river');
+      const lake = document.getElementById('lake');
       const clickCatcher = document.getElementById('click-catcher');
 
-      // وضعیت اولیه پنگوئن: پایین-چپ (مثلاً 15% از چپ، 75% از بالا)
-      let penguinX = window.innerWidth * 0.15;
-      let penguinY = window.innerHeight * 0.75;
+      // موقعیت اولیه پنگوئن (سمت چپ، خارج از دریاچه)
+      let penguinX = window.innerWidth * 0.1;
+      let penguinY = window.innerHeight * 0.5;
       
-      // قرار دادن اولیه پنگوئن
+      // قرار دادن اولیه
       penguin.style.left = penguinX + 'px';
       penguin.style.top = penguinY + 'px';
       penguin.style.transform = 'translate(-50%, -50%)';
 
-      // ابعاد پنگوئن برای محاسبات (تقریبی)
-      const penguinWidth = 80;
-      const penguinHeight = 80;
+      // فاصله ایمن از لبه دریاچه (پیکسل)
+      const SAFE_DISTANCE = 50;
 
-      // تابع بررسی اینکه نقطه کلیک شده روی رود هست یا نه
-      function isClickOnRiver(clientX) {
-        const riverRect = river.getBoundingClientRect();
-        return clientX >= riverRect.left && clientX <= riverRect.right;
+      // تابع تشخیص محدوده دریاچه
+      function getLakeBounds() {
+        const lakeRect = lake.getBoundingClientRect();
+        return {
+          left: lakeRect.left,
+          right: lakeRect.right,
+          top: lakeRect.top,
+          bottom: lakeRect.bottom
+        };
+      }
+
+      // تابع بررسی اینکه نقطه داخل دریاچه هست یا نه
+      function isInsideLake(x, y) {
+        const bounds = getLakeBounds();
+        return x >= bounds.left && x <= bounds.right && 
+               y >= bounds.top && y <= bounds.bottom;
+      }
+
+      // تابع پیدا کردن نزدیک‌ترین نقطه امن بیرون دریاچه
+      function findSafeSpot(targetX, targetY) {
+        const bounds = getLakeBounds();
+        
+        // اگر نقطه خارج دریاچه هست، همون رو برمی‌گردونیم
+        if (!isInsideLake(targetX, targetY)) {
+          return { x: targetX, y: targetY };
+        }
+
+        // پیدا کردن نزدیک‌ترین لبه دریاچه
+        const distToLeft = targetX - bounds.left;
+        const distToRight = bounds.right - targetX;
+        const distToTop = targetY - bounds.top;
+        const distToBottom = bounds.bottom - targetY;
+
+        const minDist = Math.min(distToLeft, distToRight, distToTop, distToBottom);
+
+        let safeX = targetX;
+        let safeY = targetY;
+
+        if (minDist === distToLeft) {
+          safeX = bounds.left - SAFE_DISTANCE;
+        } else if (minDist === distToRight) {
+          safeX = bounds.right + SAFE_DISTANCE;
+        } else if (minDist === distToTop) {
+          safeY = bounds.top - SAFE_DISTANCE;
+        } else {
+          safeY = bounds.bottom + SAFE_DISTANCE;
+        }
+
+        // محدود کردن به داخل صفحه
+        const margin = 40;
+        safeX = Math.min(Math.max(safeX, margin), window.innerWidth - margin);
+        safeY = Math.min(Math.max(safeY, margin), window.innerHeight - margin);
+
+        return { x: safeX, y: safeY };
       }
 
       // تابع ساخت نور سبز
@@ -174,7 +223,6 @@
         light.style.top = y + 'px';
         document.body.appendChild(light);
 
-        // حذف نور بعد از انیمیشن (0.8 ثانیه)
         setTimeout(() => {
           if (light && light.parentNode) {
             light.parentNode.removeChild(light);
@@ -182,85 +230,75 @@
         }, 800);
       }
 
-      // تابع جابجایی پنگوئن به نقطه کلیک (در صورت مجاز بودن)
+      // تابع حرکت پنگوئن
       function movePenguinTo(clientX, clientY) {
-        // محدود کردن به داخل صفحه با حاشیه کوچک
         const margin = 40;
         let targetX = Math.min(Math.max(clientX, margin), window.innerWidth - margin);
         let targetY = Math.min(Math.max(clientY, margin), window.innerHeight - margin);
 
-        // ذخیره موقعیت جدید
-        penguinX = targetX;
-        penguinY = targetY;
+        // پیدا کردن نقطه امن (اگر داخل دریاچه کلیک شده باشه، نزدیک‌ترین نقطه بیرون)
+        const safeSpot = findSafeSpot(targetX, targetY);
+        
+        // به‌روزرسانی موقعیت پنگوئن
+        penguinX = safeSpot.x;
+        penguinY = safeSpot.y;
 
-        // اعمال جابجایی با transition
-        penguin.style.left = targetX + 'px';
-        penguin.style.top = targetY + 'px';
+        // اعمال حرکت
+        penguin.style.left = safeSpot.x + 'px';
+        penguin.style.top = safeSpot.y + 'px';
         penguin.style.transform = 'translate(-50%, -50%)';
 
-        // ایجاد نور سبز در همون نقطه
-        createGreenLight(targetX, targetY);
-
-        // چرخش پنگوئن بر اساس جهت حرکت (اختیاری: ساده نگهش میداریم، میتونیم flip کنیم)
-        // ولی خواسته نشده، فقط حرکت می‌کنه.
+        // نور سبز در نقطه امن (نه نقطه کلیک اگر داخل دریاچه بوده)
+        createGreenLight(safeSpot.x, safeSpot.y);
       }
 
-      // مدیریت کلیک روی لایه catcher
+      // مدیریت کلیک
       clickCatcher.addEventListener('click', function(e) {
         e.stopPropagation();
         const clickX = e.clientX;
         const clickY = e.clientY;
 
-        // بررسی اینکه روی رود کلیک نشده باشه
-        if (isClickOnRiver(clickX)) {
-          // کلیک روی رود: هیچ اتفاقی نمیفته
-          // میتونیم بازخورد بصری کوچک بدیم (لرزش یا رنگ قرمز) ولی خواسته نشده
-          // فقط پنگوئن حرکت نکنه
-          return;
-        }
-
-        // حرکت پنگوئن به نقطه کلیک
+        // حرکت پنگوئن (حتی اگر روی دریاچه کلیک بشه، میره نزدیک‌ترین نقطه امن)
         movePenguinTo(clickX, clickY);
       });
 
-      // جلوگیری از کلیک روی خود پنگوئن (چون pointer-events: none هست عملا کلیک نمیگیره)
-      // اما روی رود هم که بررسی کردیم
-
-      // هندل تغییر سایز صفحه: موقعیت پنگوئن رو متناسب نگه داریم
+      // هندل تغییر سایز صفحه
       window.addEventListener('resize', function() {
-        // محاسبه نسبت موقعیت قبلی
         const ratioX = penguinX / window.innerWidth;
         const ratioY = penguinY / window.innerHeight;
         
-        // موقعیت جدید بر اساس نسبت
         penguinX = ratioX * window.innerWidth;
         penguinY = ratioY * window.innerHeight;
         
-        // محدود کردن
         penguinX = Math.min(Math.max(penguinX, 40), window.innerWidth - 40);
         penguinY = Math.min(Math.max(penguinY, 40), window.innerHeight - 40);
+        
+        // اگر بعد از resize داخل دریاچه افتاد، ببرش بیرون
+        if (isInsideLake(penguinX, penguinY)) {
+          const safeSpot = findSafeSpot(penguinX, penguinY);
+          penguinX = safeSpot.x;
+          penguinY = safeSpot.y;
+        }
         
         penguin.style.left = penguinX + 'px';
         penguin.style.top = penguinY + 'px';
         penguin.style.transform = 'translate(-50%, -50%)';
       });
 
-      // اطمینان از لود تصویر پنگوئن (اختیاری)
+      // لود اولیه تصویر
       penguin.addEventListener('load', function() {
-        // تنظیم اولیه دوباره
         penguin.style.left = penguinX + 'px';
         penguin.style.top = penguinY + 'px';
         penguin.style.transform = 'translate(-50%, -50%)';
       });
 
-      // اگر تصویر از قبل لود شده باشه
       if (penguin.complete) {
         penguin.style.left = penguinX + 'px';
         penguin.style.top = penguinY + 'px';
         penguin.style.transform = 'translate(-50%, -50%)';
       }
 
-      console.log('🐧 پنگوئن آماده‌ست! روی پس‌زمینه کلیک کن (نه روی رود)');
+      console.log('🐧 پنگوئن کنار دریاچه آماده‌ست! وارد آب نمیشه');
     })();
   </script>
 </body>
