@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>تصویر پس‌زمینه کامل و رود عمودی با عرض یک‌سوم</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-size: 0;
+    }
+
+    /* پس‌زمینه کامل */
+    .fullscreen-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-image: url('assets/image/paszamine.jpeg');
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      z-index: 0;
+    }
+
+    /* نوار عمودی با عرض دقیقاً یک‌سوم صفحه */
+    .vertical-bar {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100vw / 3);   /* عرض یک‌سوم صفحه */
+      height: 100vh;           /* ارتفاع کامل */
+      z-index: 2;
+      pointer-events: none;
+      overflow: hidden;        /* هر چیزی که بیرون بزنه قایم میشه */
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
+    }
+
+    .vertical-bar img {
+      display: block;
+      width: 100%;              /* عرض تصویر کل فضای نوار رو پر کنه */
+      height: 100%;             /* ارتفاع تصویر کل ارتفاع صفحه رو پر کنه */
+      object-fit: fill;         /* کشیده بشه، کیفیت فدای پر شدن فضا */
+      border: none;
+      outline: none;
+      vertical-align: top;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="fullscreen-bg" role="img" aria-label="تصویر پس‌زمینه پازمینه"></div>
+
+  <div class="vertical-bar">
+    <img src="assets/image/roood_1.jpeg" alt="رود عمودی مرکز با عرض یک‌سوم">
+  </div>
+</body>
+</html>
