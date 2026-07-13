@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>تصویر پس‌زمینه کامل و رود عمودی با عرض یک‌دوم</title>
+  <title>پنگوئن راه‌رو روی پس‌زمینه</title>
   <style>
     * {
       margin: 0;
@@ -16,6 +16,7 @@
       height: 100%;
       overflow: hidden;
       font-size: 0;
+      cursor: crosshair;
     }
 
     /* پس‌زمینه کامل */
@@ -33,15 +34,15 @@
       z-index: 0;
     }
 
-    /* نوار عمودی با عرض دقیقاً یک‌دوم صفحه */
+    /* نوار رود عمودی با عرض یک‌دوم */
     .vertical-bar {
       position: fixed;
       top: 0;
       bottom: 0;
       left: 50%;
       transform: translateX(-50%);
-      width: calc(100vw / 2);   /* عرض نصف صفحه */
-      height: 100vh;           /* ارتفاع کامل */
+      width: calc(100vw / 2);
+      height: 100vh;
       z-index: 2;
       pointer-events: none;
       overflow: hidden;
@@ -54,19 +55,213 @@
       display: block;
       width: 100%;
       height: 100%;
-      object-fit: fill;         /* کشیده میشه تا فضا پر بشه */
+      object-fit: fill;
       border: none;
       outline: none;
       vertical-align: top;
       flex-shrink: 0;
     }
+
+    /* پنگوئن */
+    #penguin {
+      position: fixed;
+      z-index: 10;
+      width: 80px;
+      height: auto;
+      transition: left 0.8s ease-in-out, top 0.8s ease-in-out;
+      pointer-events: none;
+      image-rendering: auto;
+    }
+
+    /* نور سبز کوچیک */
+    .green-light {
+      position: fixed;
+      width: 20px;
+      height: 20px;
+      background: radial-gradient(circle, #00ff88 0%, #00cc66 40%, transparent 70%);
+      border-radius: 50%;
+      z-index: 9;
+      pointer-events: none;
+      box-shadow: 0 0 15px #00ff88, 0 0 30px #00ff66;
+      animation: pulse 0.8s ease-in-out;
+      transform: translate(-50%, -50%);
+    }
+
+    @keyframes pulse {
+      0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+      50% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(1); opacity: 0.9; }
+    }
+
+    /* لایه کلیک‌گیر برای تشخیص رود */
+    #click-catcher {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 20;
+      background: transparent;
+    }
+
+    /* متن راهنما (محو) */
+    .hint {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      z-index: 30;
+      color: rgba(255, 255, 255, 0.7);
+      font-family: 'Vazirmatn', 'Tahoma', sans-serif;
+      font-size: 13px;
+      background: rgba(0,0,0,0.5);
+      padding: 6px 14px;
+      border-radius: 20px;
+      pointer-events: none;
+      direction: rtl;
+    }
   </style>
 </head>
 <body>
-  <div class="fullscreen-bg" role="img" aria-label="تصویر پس‌زمینه پازمینه"></div>
+  <!-- پس‌زمینه -->
+  <div class="fullscreen-bg" role="img" aria-label="پس‌زمینه"></div>
 
-  <div class="vertical-bar">
-    <img src="assets/image/roood_1.jpeg" alt="رود عمودی مرکز با عرض یک‌دوم">
+  <!-- رود عمودی -->
+  <div class="vertical-bar" id="river">
+    <img src="assets/image/roood_1.jpeg" alt="رود">
   </div>
+
+  <!-- پنگوئن -->
+  <img id="penguin" src="assets/image/pangnafasdam.jpeg" alt="پنگوئن نفس‌دام">
+
+  <!-- لایه کلیک -->
+  <div id="click-catcher"></div>
+
+  <!-- راهنما -->
+  <div class="hint">برای حرکت پنگوئن، روی پس‌زمینه (غیر از رود) کلیک کن</div>
+
+  <script>
+    (function() {
+      'use strict';
+
+      const penguin = document.getElementById('penguin');
+      const river = document.getElementById('river');
+      const clickCatcher = document.getElementById('click-catcher');
+
+      // وضعیت اولیه پنگوئن: پایین-چپ (مثلاً 15% از چپ، 75% از بالا)
+      let penguinX = window.innerWidth * 0.15;
+      let penguinY = window.innerHeight * 0.75;
+      
+      // قرار دادن اولیه پنگوئن
+      penguin.style.left = penguinX + 'px';
+      penguin.style.top = penguinY + 'px';
+      penguin.style.transform = 'translate(-50%, -50%)';
+
+      // ابعاد پنگوئن برای محاسبات (تقریبی)
+      const penguinWidth = 80;
+      const penguinHeight = 80;
+
+      // تابع بررسی اینکه نقطه کلیک شده روی رود هست یا نه
+      function isClickOnRiver(clientX) {
+        const riverRect = river.getBoundingClientRect();
+        return clientX >= riverRect.left && clientX <= riverRect.right;
+      }
+
+      // تابع ساخت نور سبز
+      function createGreenLight(x, y) {
+        const light = document.createElement('div');
+        light.className = 'green-light';
+        light.style.left = x + 'px';
+        light.style.top = y + 'px';
+        document.body.appendChild(light);
+
+        // حذف نور بعد از انیمیشن (0.8 ثانیه)
+        setTimeout(() => {
+          if (light && light.parentNode) {
+            light.parentNode.removeChild(light);
+          }
+        }, 800);
+      }
+
+      // تابع جابجایی پنگوئن به نقطه کلیک (در صورت مجاز بودن)
+      function movePenguinTo(clientX, clientY) {
+        // محدود کردن به داخل صفحه با حاشیه کوچک
+        const margin = 40;
+        let targetX = Math.min(Math.max(clientX, margin), window.innerWidth - margin);
+        let targetY = Math.min(Math.max(clientY, margin), window.innerHeight - margin);
+
+        // ذخیره موقعیت جدید
+        penguinX = targetX;
+        penguinY = targetY;
+
+        // اعمال جابجایی با transition
+        penguin.style.left = targetX + 'px';
+        penguin.style.top = targetY + 'px';
+        penguin.style.transform = 'translate(-50%, -50%)';
+
+        // ایجاد نور سبز در همون نقطه
+        createGreenLight(targetX, targetY);
+
+        // چرخش پنگوئن بر اساس جهت حرکت (اختیاری: ساده نگهش میداریم، میتونیم flip کنیم)
+        // ولی خواسته نشده، فقط حرکت می‌کنه.
+      }
+
+      // مدیریت کلیک روی لایه catcher
+      clickCatcher.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const clickX = e.clientX;
+        const clickY = e.clientY;
+
+        // بررسی اینکه روی رود کلیک نشده باشه
+        if (isClickOnRiver(clickX)) {
+          // کلیک روی رود: هیچ اتفاقی نمیفته
+          // میتونیم بازخورد بصری کوچک بدیم (لرزش یا رنگ قرمز) ولی خواسته نشده
+          // فقط پنگوئن حرکت نکنه
+          return;
+        }
+
+        // حرکت پنگوئن به نقطه کلیک
+        movePenguinTo(clickX, clickY);
+      });
+
+      // جلوگیری از کلیک روی خود پنگوئن (چون pointer-events: none هست عملا کلیک نمیگیره)
+      // اما روی رود هم که بررسی کردیم
+
+      // هندل تغییر سایز صفحه: موقعیت پنگوئن رو متناسب نگه داریم
+      window.addEventListener('resize', function() {
+        // محاسبه نسبت موقعیت قبلی
+        const ratioX = penguinX / window.innerWidth;
+        const ratioY = penguinY / window.innerHeight;
+        
+        // موقعیت جدید بر اساس نسبت
+        penguinX = ratioX * window.innerWidth;
+        penguinY = ratioY * window.innerHeight;
+        
+        // محدود کردن
+        penguinX = Math.min(Math.max(penguinX, 40), window.innerWidth - 40);
+        penguinY = Math.min(Math.max(penguinY, 40), window.innerHeight - 40);
+        
+        penguin.style.left = penguinX + 'px';
+        penguin.style.top = penguinY + 'px';
+        penguin.style.transform = 'translate(-50%, -50%)';
+      });
+
+      // اطمینان از لود تصویر پنگوئن (اختیاری)
+      penguin.addEventListener('load', function() {
+        // تنظیم اولیه دوباره
+        penguin.style.left = penguinX + 'px';
+        penguin.style.top = penguinY + 'px';
+        penguin.style.transform = 'translate(-50%, -50%)';
+      });
+
+      // اگر تصویر از قبل لود شده باشه
+      if (penguin.complete) {
+        penguin.style.left = penguinX + 'px';
+        penguin.style.top = penguinY + 'px';
+        penguin.style.transform = 'translate(-50%, -50%)';
+      }
+
+      console.log('🐧 پنگوئن آماده‌ست! روی پس‌زمینه کلیک کن (نه روی رود)');
+    })();
+  </script>
 </body>
 </html>
